@@ -240,3 +240,56 @@ def train():
 
 if __name__ == '__main__':
     train()
+
+def recommend_file_placement(model_path=None):
+    """
+    Recommend optimal file placement on disk.
+    Co-accessed files should be placed near each other
+    to minimize seek time — this is what ext4 tries to do
+    with block groups, but AIMOS does it with AI.
+    """
+    import joblib
+    from utils.config import DISK_MODEL_PATH, RESULT_DIR
+    import json
+
+    path = model_path or DISK_MODEL_PATH
+    if not os.path.exists(path):
+        print("Train disk optimizer first.")
+        return
+
+    data           = joblib.load(path)
+    labels         = data['labels']
+    file_cylinders = data['file_cylinders']
+    n_clusters     = data['kmeans'].n_clusters
+
+    print("\n=== AIMOS Disk Placement Recommendations ===\n")
+    recommendations = {}
+
+    for cl in range(n_clusters):
+        files = np.where(labels == cl)[0]
+        cyls  = file_cylinders[files]
+        ideal_start = cl * (1000 // n_clusters)
+        ideal_end   = ideal_start + (1000 // n_clusters)
+
+        print(f"Cluster {cl} ({len(files)} files):")
+        print(f"  Current cylinders : {cyls.min()}–{cyls.max()}")
+        print(f"  Recommended zone  : {ideal_start}–{ideal_end}")
+        print(f"  Files             : {files.tolist()}")
+        print(f"  Reason            : Co-accessed together "
+              f"{int(cyls.mean())} mean cylinder\n")
+
+        recommendations[f"cluster_{cl}"] = {
+            'files': files.tolist(),
+            'current_cyl_range': [int(cyls.min()), int(cyls.max())],
+            'recommended_zone':  [ideal_start, ideal_end]
+        }
+
+    out = os.path.join(RESULT_DIR, 'disk_placement_recommendations.json')
+    with open(out, 'w') as f:
+        json.dump(recommendations, f, indent=2)
+    print(f"Recommendations saved → {out}")
+    return recommendations
+
+if __name__ == '__main__':
+    train()
+    recommend_file_placement()
