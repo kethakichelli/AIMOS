@@ -61,3 +61,13 @@ gymnasium, Streamlit, Plotly, psutil, eBPF/bpftrace
 Hybrid AI-OS layer — real /proc + psutil kernel interfaces
 feeding live data to AI models. Same architecture as
 Google Autopilot and Meta Twine.
+
+## v2.0 Improvements
+| Fix | What was added |
+|-----|---------------|
+| Enforcement layer | cgroups + renice + ionice write-back |
+| Real training data | 24hr OS data collection pipeline |
+| Auto retraining | Models retrain on rolling data window |
+| Faster polling | 100ms interval for critical modules |
+| eBPF integration | Real kernel context switch + fault capture |
+| Disk placement | AI recommends optimal file cylinder zones |
