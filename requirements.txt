@@ -1,0 +1,17 @@
+psutil
+pandas
+numpy
+matplotlib
+scikit-learn
+torch
+torchvision
+gymnasium
+stable-baselines3[extra]
+streamlit
+plotly
+scipy
+joblib
+tqdm
+seaborn
+rich
+tensorboard

@@ -1,0 +1,33 @@
+/*
+ * AIMOS — eBPF Scheduler Probe
+ * Hooks into kernel sched_switch tracepoint.
+ * Fires on every context switch — captures:
+ *   - which process was preempted (prev)
+ *   - which process ran next (next)
+ *   - timestamp in nanoseconds
+ *   - CPU core where switch happened
+ *   - previous process state
+ *
+ * Run with: sudo bpftrace utils/sched_probe.bt
+ * Output format: timestamp,cpu,prev_pid,prev_comm,prev_prio,next_pid,next_comm,next_prio,prev_state
+ */
+
+BEGIN
+{
+    printf("timestamp_ns,cpu,prev_pid,prev_comm,prev_prio,next_pid,next_comm,next_prio,prev_state\n");
+}
+
+tracepoint:sched:sched_switch
+{
+    printf("%llu,%d,%d,%s,%d,%d,%s,%d,%d\n",
+        nsecs,
+        cpu,
+        args->prev_pid,
+        args->prev_comm,
+        args->prev_prio,
+        args->next_pid,
+        args->next_comm,
+        args->next_prio,
+        args->prev_state
+    );
+}

@@ -1,0 +1,8 @@
+{
+  "silhouette_score": 0.3762,
+  "n_clusters": 4,
+  "scan_seek": 1414,
+  "sstf_seek": 1414,
+  "ai_seek": 2006,
+  "reduction_vs_best_pct": -41.9
+}

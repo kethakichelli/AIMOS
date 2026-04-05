@@ -1,0 +1,7 @@
+{
+  "rf_roc_auc": 0.9939,
+  "svm_roc_auc": 0.9913,
+  "banker_ms": 0.026,
+  "ai_ms": 0.1775,
+  "speedup": 0.1
+}

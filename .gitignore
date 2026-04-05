@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pth
+*.pkl
+*.zip
+*.pt
+data/raw_metrics.csv
+logs/
+*.log
+.env
