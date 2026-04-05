@@ -663,3 +663,76 @@ class AIMOSControlBrainWithEBPF(AIMOSControlBrain):
         if self._ebpf_active:
             self._ebpf.stop()
         super().stop()
+
+
+class AIMOSControlBrainFull(AIMOSControlBrainWithEBPF):
+    """
+    Complete AIMOS Control Brain with full enforcement.
+    Combines all 6 AI modules + eBPF + meta-controller
+    + kernel enforcement via renice/ionice/cpufreq.
+    This is the complete system as described in the paper.
+    """
+
+    def __init__(self, collector=None):
+        super().__init__(collector)
+        from modules.kernel_enforcer import AIMOSKernelEnforcer
+        self._enforcer = AIMOSKernelEnforcer()
+        logger.info("Kernel enforcer attached to Control Brain.")
+
+    def _run_cycle(self):
+        super()._run_cycle()
+        decision = self.get_current_decision()
+        if not decision:
+            return
+        try:
+            if self.collector:
+                proc_df = self.collector.get_latest(
+                    n=50, row_type='process'
+                )
+            else:
+                df = pd.read_csv(
+                    os.path.join(
+                        os.path.expanduser("~/AIMOS"),
+                        "data", "raw_metrics.csv"
+                    )
+                )
+                proc_df = df[
+                    df['type'] == 'process'
+                ].tail(50)
+
+            enforcement = self._enforcer.enforce_decision(
+                decision, proc_df
+            )
+
+            with self._lock:
+                if self.current_decision:
+                    self.current_decision['enforcement'] = {
+                        'cpu_calls' : len(
+                            enforcement.get('cpu', [])
+                        ),
+                        'disk_calls': len(
+                            enforcement.get('disk', [])
+                        ),
+                        'energy_ok' : enforcement.get(
+                            'energy', False
+                        ),
+                        'isolated'  : len(
+                            enforcement.get('isolation', [])
+                        ),
+                        'total'     : enforcement.get(
+                            'total_calls', 0
+                        ),
+                    }
+        except Exception as e:
+            logger.error(f"Enforcement cycle error: {e}")
+
+    def stop(self):
+        super().stop()
+        self._enforcer.save_log()
+        summary = self._enforcer.get_enforcement_summary()
+        logger.info(
+            f"Total enforcement: "
+            f"{summary.get('total_kernel_calls', 0)} "
+            f"kernel calls across "
+            f"{summary.get('total_cycles', 0)} cycles"
+        )

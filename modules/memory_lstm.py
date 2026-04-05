@@ -217,3 +217,20 @@ def train():
 
 if __name__ == '__main__':
     train()
+
+def load_model(path=None):
+    """Load trained LSTM model correctly."""
+    import sys, os
+    sys.path.insert(0, os.path.expanduser("~/AIMOS"))
+    from utils.config import MEM_MODEL_PATH
+    path = path or MEM_MODEL_PATH
+    model = PageLSTM()
+    state = torch.load(path, map_location='cpu')
+    if isinstance(state, dict) and not any(
+            k.startswith('embed') for k in state.keys()):
+        # wrapped in OrderedDict — unwrap
+        model.load_state_dict(list(state.values())[0])
+    else:
+        model.load_state_dict(state)
+    model.eval()
+    return model

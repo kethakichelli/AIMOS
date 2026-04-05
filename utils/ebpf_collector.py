@@ -128,6 +128,16 @@ tracepoint:block:block_rq_insert {
         self._stop.set()
 
 
+    def start(self):
+        try:
+            self.start_context_switch_trace()
+            self.start_page_fault_trace()
+            self.start_disk_trace()
+            return True
+        except Exception as e:
+            return False
+
+
 def test_ebpf():
     print("\n=== AIMOS eBPF Collector Test ===")
     print("Collecting kernel events for 10 seconds...")
@@ -152,3 +162,8 @@ def test_ebpf():
 
 if __name__ == '__main__':
     test_ebpf()
+
+# Alias for compatibility with control_brain.py
+AIMOSeBPFCollector = eBPFCollector
+
+
