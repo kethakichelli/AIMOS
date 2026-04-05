@@ -17,7 +17,7 @@ LOG_DIR     = os.path.join(ROOT_DIR, "logs")
 RESULT_DIR  = os.path.join(ROOT_DIR, "results")
 
 # ── Data collector settings ───────────────────────────────────────────────────
-COLLECT_INTERVAL_SEC  = 0.5      # how often to poll OS metrics
+COLLECT_INTERVAL_SEC  = 0.1      # how often to poll OS metrics
 COLLECTOR_MAX_ROWS    = 5000     # rolling window size in memory
 RAW_METRICS_CSV       = os.path.join(DATA_DIR, "raw_metrics.csv")
 
