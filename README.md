@@ -31,95 +31,91 @@ and cpufreq — all in real time.
 ---
 
 ## System Flowchart
-┌─────────────────────────────────────────────────────────┐
-│                    AIMOS SYSTEM FLOW                    │
-└─────────────────────────────────────────────────────────┘
-START
-│
-▼
-┌─────────────────────────────────────────────────────────┐
-│                 DATA COLLECTION LAYER                   │
-│                                                         │
-│   ┌──────────┐   ┌──────────┐   ┌──────────────────┐   │
-│   │  psutil  │   │  /proc   │   │  eBPF bpftrace   │   │
-│   │ CPU, RAM │   │schedstat │   │  sched_switch    │   │
-│   │ processes│   │ meminfo  │   │  tracepoint      │   │
-│   └────┬─────┘   └────┬─────┘   └────────┬─────────┘   │
-│        └──────────────┼──────────────────┘             │
-│                       │ every 500ms                     │
-└───────────────────────┼─────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────┐
-│               FEATURE ENGINEERING                       │
-│   Normalize → Window → Encode → 7-element obs vector    │
-└───────────────────────┬─────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────┐
-│              6 AI MODULES (parallel)                    │
-│                                                         │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                │
-│  │    M1    │ │    M2    │ │    M3    │                │
-│  │   CPU    │ │  Memory  │ │ Deadlock │                │
-│  │PPO Agent │ │  LSTM    │ │Rand.Forest               │
-│  │FCFS/SJF/ │ │Page fault│ │Safe/     │                │
-│  │RR/PRIOR  │ │prediction│ │Unsafe    │                │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘                │
-│       │            │            │                       │
-│  ┌────┴─────┐ ┌────┴─────┐ ┌────┴─────┐                │
-│  │    M4    │ │    M5    │ │    M6    │                │
-│  │   Disk   │ │ Anomaly  │ │  Energy  │                │
-│  │ K-Means  │ │ Isolation│ │Multi-obj │                │
-│  │ Cluster  │ │  Forest  │ │   RL     │                │
-│  │ pattern  │ │ Zero-day │ │ Governor │                │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘                │
-│       └────────────┼────────────┘                       │
-└────────────────────┼─────────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────┐
-│              AI CONTROL BRAIN                           │
-│                                                         │
-│   Collect all 6 module outputs                          │
-│          │                                              │
-│          ▼                                              │
-│   Conflict detected?                                    │
-│   ┌───────────────────────────────────────────┐        │
-│   │ Security alert?  → Override to PRIORITY   │        │
-│   │ Deadlock HIGH?   → Override to RR         │        │
-│   │ Memory HIGH?     → Override powersave      │        │
-│   │ Heavy load?      → Override to performance│        │
-│   └───────────────────────────────────────────┘        │
-│          │                                              │
-│          ▼                                              │
-│   Unified decision produced                             │
-└────────────────────┬─────────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────┐
-│            KERNEL ENFORCEMENT LAYER                     │
-│                                                         │
-│  ┌───────────┐  ┌───────────┐  ┌────────────────────┐  │
-│  │  renice   │  │  ionice   │  │  cpufreq / cgroups │  │
-│  │ CPU sched │  │ I/O class │  │  frequency / limits│  │
-│  │ priority  │  │ priority  │  │  (native Linux)    │  │
-│  └───────────┘  └───────────┘  └────────────────────┘  │
-│                                                         │
-│         47+ real kernel calls per 5 cycles              │
-└────────────────────┬─────────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────┐
-│              LINUX KERNEL                               │
-│   CPU Scheduler │ Memory Manager │ I/O Scheduler        │
-└────────────────────┬─────────────────────────────────────┘
-│
-│ feedback loop (metrics change)
-│
-└──────────────────► back to top
-every 1 second
+```mermaid
+flowchart TD
+    A([START]) --> B
 
+    subgraph DC["DATA COLLECTION LAYER"]
+        B1[psutil
+CPU · RAM · Processes]
+        B2[/proc filesystem
+schedstat · meminfo]
+        B3[eBPF bpftrace
+sched_switch tracepoint]
+    end
+
+    B --> B1 & B2 & B3
+
+    B1 & B2 & B3 --> C
+
+    subgraph FE["FEATURE ENGINEERING"]
+        C[Normalize → Window → Encode
+7-element observation vector]
+    end
+
+    C --> D
+
+    subgraph AI["6 AI MODULES — running in parallel"]
+        D --> M1 & M2 & M3 & M4 & M5 & M6
+        M1["M1 CPU Scheduler
+PPO RL Agent
+FCFS · SJF · RR · Priority"]
+        M2["M2 Memory Manager
+LSTM
+Page fault prediction"]
+        M3["M3 Deadlock Predictor
+Random Forest
+Safe · Unsafe states"]
+        M4["M4 Disk Optimizer
+K-Means
+Access pattern clustering"]
+        M5["M5 Anomaly Detector
+Isolation Forest
+Zero-day detection"]
+        M6["M6 Energy Optimizer
+Multi-objective RL
+Pareto-optimal governor"]
+    end
+
+    M1 & M2 & M3 & M4 & M5 & M6 --> CB
+
+    subgraph BRAIN["AI CONTROL BRAIN — meta-controller"]
+        CB[Collect all 6 outputs] --> CF{Conflict
+detected?}
+        CF -->|Security alert| OV1[Override → PRIORITY scheduling]
+        CF -->|Deadlock HIGH| OV2[Override → Round Robin]
+        CF -->|Memory HIGH| OV3[Override → balanced governor]
+        CF -->|No conflict| UD[Unified decision produced]
+        OV1 & OV2 & OV3 --> UD
+    end
+
+    UD --> KE
+
+    subgraph ENFORCE["KERNEL ENFORCEMENT LAYER"]
+        KE[Apply decision to OS]
+        KE --> R1[renice
+CPU priority]
+        KE --> R2[ionice
+I/O class]
+        KE --> R3[cpufreq
+Frequency governor]
+    end
+
+    R1 & R2 & R3 --> K
+
+    subgraph KERNEL["LINUX KERNEL"]
+        K[CPU Scheduler · Memory Manager · I/O Scheduler]
+    end
+
+    K -->|feedback loop every 1s| C
+
+    style DC fill:#1e3a5f,color:#fff,stroke:#3B82F6
+    style FE fill:#1e3a2f,color:#fff,stroke:#10B981
+    style AI fill:#2d1b4e,color:#fff,stroke:#8B5CF6
+    style BRAIN fill:#3d2010,color:#fff,stroke:#F59E0B
+    style ENFORCE fill:#3d1010,color:#fff,stroke:#EF4444
+    style KERNEL fill:#1a1a2e,color:#fff,stroke:#6B7280
+```
 
 ## 6 AI Modules
 
