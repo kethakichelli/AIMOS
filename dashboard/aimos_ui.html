@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIMOS — AI-Integrated Modular OS Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080c10;--bg2:#0d1117;--bg3:#111820;--border:#1e2d3d;--border2:#243447;
+  --green:#00ff88;--green2:#00cc6a;--green-dim:#003322;--blue:#4da6ff;--blue-dim:#001830;
+  --amber:#ffb347;--amber-dim:#2a1800;--red:#ff4f6b;--red-dim:#2a0010;
+  --purple:#c084fc;--purple-dim:#1a0030;--cyan:#22d3ee;--cyan-dim:#001820;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);pointer-events:none;z-index:0;}
+.header{position:sticky;top:0;z-index:10;padding:28px 32px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(8,12,16,0.95);backdrop-filter:blur(10px);}
+.logo{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green);letter-spacing:-0.5px;text-shadow:0 0 20px rgba(0,255,136,0.4);}
+.logo span{color:var(--text2);font-weight:300;}
+.tagline{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:2px;letter-spacing:2px;text-transform:uppercase;}
+.header-right{display:flex;gap:16px;align-items:center;}
+.status-pill{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:4px;border:1px solid;}
+.status-pill.live{border-color:var(--green);color:var(--green);background:rgba(0,255,136,0.06);}
+.status-pill.live .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(0.8);}}
+.sys-time{font-family:var(--mono);font-size:12px;color:var(--text2);}
+.main{position:relative;z-index:1;padding:28px 32px;max-width:1600px;margin:0 auto;}
+.overview-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:28px;}
+.ov-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .2s,transform .2s;}
+.ov-card:hover{transform:translateY(-2px);}
+.ov-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.ov-card.cpu::before{background:var(--blue);}
+.ov-card.mem::before{background:var(--green);}
+.ov-card.deadlock::before{background:var(--amber);}
+.ov-card.disk::before{background:var(--cyan);}
+.ov-card.security::before{background:var(--red);}
+.ov-card.energy::before{background:var(--purple);}
+.ov-num{font-family:var(--mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.ov-card.cpu .ov-num{color:var(--blue);}
+.ov-card.mem .ov-num{color:var(--green);}
+.ov-card.deadlock .ov-num{color:var(--amber);}
+.ov-card.disk .ov-num{color:var(--cyan);}
+.ov-card.security .ov-num{color:var(--red);}
+.ov-card.energy .ov-num{color:var(--purple);}
+.ov-val{font-family:var(--mono);font-size:20px;font-weight:700;margin-bottom:2px;}
+.ov-card.cpu .ov-val{color:var(--blue);}
+.ov-card.mem .ov-val{color:var(--green);}
+.ov-card.deadlock .ov-val{color:var(--amber);}
+.ov-card.disk .ov-val{color:var(--cyan);}
+.ov-card.security .ov-val{color:var(--red);}
+.ov-card.energy .ov-val{color:var(--purple);}
+.ov-label{font-size:10px;color:var(--text3);font-family:var(--mono);}
+.modules-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.mod{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .25s;animation:fadeUp .5s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.mod:nth-child(1){animation-delay:.05s;}.mod:nth-child(2){animation-delay:.1s;}.mod:nth-child(3){animation-delay:.15s;}
+.mod:nth-child(4){animation-delay:.2s;}.mod:nth-child(5){animation-delay:.25s;}.mod:nth-child(6){animation-delay:.3s;}
+.mod.cpu{border-color:#1a2d40;}.mod.mem{border-color:#0d2a1a;}.mod.deadlock{border-color:#2a1e00;}
+.mod.disk{border-color:#001e28;}.mod.security{border-color:#2a0a10;}.mod.energy{border-color:#1a0a2a;}
+.mod.cpu:hover{border-color:var(--blue);}.mod.mem:hover{border-color:var(--green);}
+.mod.deadlock:hover{border-color:var(--amber);}.mod.disk:hover{border-color:var(--cyan);}
+.mod.security:hover{border-color:var(--red);}.mod.energy:hover{border-color:var(--purple);}
+.mod-header{padding:14px 16px 12px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border);position:relative;}
+.mod-header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;opacity:0.5;}
+.mod.cpu .mod-header::after{background:linear-gradient(90deg,var(--blue),transparent);}
+.mod.mem .mod-header::after{background:linear-gradient(90deg,var(--green),transparent);}
+.mod.deadlock .mod-header::after{background:linear-gradient(90deg,var(--amber),transparent);}
+.mod.disk .mod-header::after{background:linear-gradient(90deg,var(--cyan),transparent);}
+.mod.security .mod-header::after{background:linear-gradient(90deg,var(--red),transparent);}
+.mod.energy .mod-header::after{background:linear-gradient(90deg,var(--purple),transparent);}
+.mod-id{font-family:var(--mono);font-size:9px;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px;}
+.mod.cpu .mod-id{color:var(--blue);}.mod.mem .mod-id{color:var(--green);}.mod.deadlock .mod-id{color:var(--amber);}
+.mod.disk .mod-id{color:var(--cyan);}.mod.security .mod-id{color:var(--red);}.mod.energy .mod-id{color:var(--purple);}
+.mod-title{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.3px;}
+.mod-sub{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
+.mod-badge{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:3px;font-weight:600;letter-spacing:1px;text-transform:uppercase;flex-shrink:0;}
+.mod.cpu .mod-badge{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(77,166,255,0.2);}
+.mod.mem .mod-badge{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,136,0.2);}
+.mod.deadlock .mod-badge{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,71,0.2);}
+.mod.disk .mod-badge{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(34,211,238,0.2);}
+.mod.security .mod-badge{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,79,107,0.2);}
+.mod.energy .mod-badge{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(192,132,252,0.2);}
+.mod-body{padding:14px 16px;}
+.metric-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px 12px;}
+.metric-label{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;}
+.metric-val{font-family:var(--mono);font-size:16px;font-weight:700;}
+.metric-unit{font-size:10px;font-weight:400;color:var(--text3);}
+.prog-section{margin-bottom:12px;}
+.prog-label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.prog-name{font-family:var(--mono);font-size:10px;color:var(--text2);}
+.prog-pct{font-family:var(--mono);font-size:10px;font-weight:600;}
+.prog-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:7px;}
+.prog-fill{height:100%;border-radius:3px;transition:width 1.5s cubic-bezier(.4,0,.2,1);position:relative;}
+.prog-fill::after{content:'';position:absolute;right:0;top:0;bottom:0;width:8px;background:rgba(255,255,255,0.4);filter:blur(2px);border-radius:3px;animation:shimmer 2s infinite;}
+@keyframes shimmer{0%,100%{opacity:.4;}50%{opacity:1;}}
+.obs-vector{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px 12px;margin-bottom:10px;}
+.obs-title{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;}
+.obs-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.obs-key{font-family:var(--mono);font-size:9px;color:var(--text3);width:120px;flex-shrink:0;}
+.obs-bar-bg{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.obs-bar-fill{height:100%;border-radius:2px;}
+.obs-val{font-family:var(--mono);font-size:9px;width:36px;text-align:right;flex-shrink:0;}
+.action-log{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:10px 12px;margin-bottom:10px;}
+.log-title{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;}
+.log-entry{font-family:var(--mono);font-size:10px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;}
+.log-entry:last-child{border-bottom:none;}
+.log-ts{color:var(--text3);flex-shrink:0;}
+.log-msg{flex:1;}
+.log-good{color:var(--green);}.log-warn{color:var(--amber);}.log-bad{color:var(--red);}
+.ring-wrap{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+.ring-item{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-family:var(--mono);font-size:10px;color:var(--text2);}
+.ring-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.anm-table{background:var(--bg);border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:10px;}
+.anm-row{display:grid;grid-template-columns:1fr 60px 80px 70px;padding:7px 12px;font-family:var(--mono);font-size:10px;border-bottom:1px solid var(--border);align-items:center;}
+.anm-row.header{background:var(--bg3);color:var(--text3);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.anm-row:last-child{border-bottom:none;}
+.anm-name{color:var(--text);}.anm-cpu{color:var(--text2);text-align:right;}.anm-score{text-align:right;}.anm-status{text-align:right;}
+.normal-tag{color:var(--green);font-size:9px;}
+.threat-tag{color:var(--red);font-size:9px;animation:blink .8s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+.isolated-tag{color:var(--amber);font-size:9px;}
+.gauge-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.gauge{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px 8px;text-align:center;}
+.gauge-label{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.gauge-arc{margin:0 auto 6px;}
+.gauge-val{font-family:var(--mono);font-size:14px;font-weight:700;}
+.gauge-unit{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.mod-footer{padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.2);}
+.footer-algo{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.footer-enforce{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid;}
+.mod.cpu .footer-enforce{color:var(--blue);border-color:rgba(77,166,255,0.3);}
+.mod.mem .footer-enforce{color:var(--green);border-color:rgba(0,255,136,0.3);}
+.mod.deadlock .footer-enforce{color:var(--amber);border-color:rgba(255,179,71,0.3);}
+.mod.disk .footer-enforce{color:var(--cyan);border-color:rgba(34,211,238,0.3);}
+.mod.security .footer-enforce{color:var(--red);border-color:rgba(255,79,107,0.3);}
+.mod.energy .footer-enforce{color:var(--purple);border-color:rgba(192,132,252,0.3);}
+.ticker-wrap{margin-bottom:20px;overflow:hidden;border:1px solid var(--border);border-radius:5px;background:var(--bg2);padding:8px 0;}
+.ticker{display:flex;gap:0;animation:tick 30s linear infinite;white-space:nowrap;}
+@keyframes tick{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+.tick-item{font-family:var(--mono);font-size:10px;color:var(--text3);padding:0 24px;border-right:1px solid var(--border);flex-shrink:0;}
+.tick-item span{color:var(--green);margin-right:6px;}
+@media(max-width:1100px){.modules-grid{grid-template-columns:repeat(2,1fr);}.overview-strip{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:700px){.modules-grid{grid-template-columns:1fr;}.overview-strip{grid-template-columns:repeat(2,1fr);}.main{padding:16px;}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <div class="logo">AIM<span>OS</span></div>
+    <div class="tagline">AI-Integrated Modular Operating System Manager</div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill live"><div class="dot"></div>ALL 6 MODULES ACTIVE</div>
+    <div class="sys-time" id="clock">--:--:--</div>
+  </div>
+</div>
+<div class="main">
+  <div class="ticker-wrap">
+    <div class="ticker">
+      <div class="tick-item"><span>CPU</span>Governor → PERFORMANCE</div>
+      <div class="tick-item"><span>MEM</span>Page fault rate ↓ 42%</div>
+      <div class="tick-item"><span>DEADLOCK</span>State: SAFE · ROC-AUC 0.96</div>
+      <div class="tick-item"><span>DISK</span>Seek time ↓ 31% vs SSTF</div>
+      <div class="tick-item"><span>SECURITY</span>32 processes isolated</div>
+      <div class="tick-item"><span>ENERGY</span>Power saved: 18%</div>
+      <div class="tick-item"><span>eBPF</span>248,628 events/sec captured</div>
+      <div class="tick-item"><span>KERNEL</span>renice=9 · ionice=4 · cgroups active</div>
+      <div class="tick-item"><span>SYSTEM</span>2,840+ rows collected · 18-core WSL2</div>
+      <div class="tick-item"><span>CPU</span>Governor → PERFORMANCE</div>
+      <div class="tick-item"><span>MEM</span>Page fault rate ↓ 42%</div>
+      <div class="tick-item"><span>DEADLOCK</span>State: SAFE · ROC-AUC 0.96</div>
+      <div class="tick-item"><span>DISK</span>Seek time ↓ 31% vs SSTF</div>
+      <div class="tick-item"><span>SECURITY</span>32 processes isolated</div>
+      <div class="tick-item"><span>ENERGY</span>Power saved: 18%</div>
+      <div class="tick-item"><span>eBPF</span>248,628 events/sec captured</div>
+      <div class="tick-item"><span>KERNEL</span>renice=9 · ionice=4 · cgroups active</div>
+      <div class="tick-item"><span>SYSTEM</span>2,840+ rows collected · 18-core WSL2</div>
+    </div>
+  </div>
+  <div class="overview-strip">
+    <div class="ov-card cpu"><div class="ov-num">MOD 01 · CPU</div><div class="ov-val" id="ov-cpu">74%</div><div class="ov-label">avg load · PPO active</div></div>
+    <div class="ov-card mem"><div class="ov-num">MOD 02 · MEMORY</div><div class="ov-val" id="ov-mem">61%</div><div class="ov-label">page hit rate · LSTM</div></div>
+    <div class="ov-card deadlock"><div class="ov-num">MOD 03 · DEADLOCK</div><div class="ov-val">SAFE</div><div class="ov-label">0 unsafe states · RF</div></div>
+    <div class="ov-card disk"><div class="ov-num">MOD 04 · DISK</div><div class="ov-val">↓31%</div><div class="ov-label">seek time · K-Means</div></div>
+    <div class="ov-card security"><div class="ov-num">MOD 05 · SECURITY</div><div class="ov-val" id="ov-sec">32</div><div class="ov-label">isolated · IsoForest</div></div>
+    <div class="ov-card energy"><div class="ov-num">MOD 06 · ENERGY</div><div class="ov-val">↓18%</div><div class="ov-label">power saved · RL</div></div>
+  </div>
+  <div class="modules-grid">
+    <div class="mod cpu">
+      <div class="mod-header"><div><div class="mod-id">Module 01 · Reinforcement Learning</div><div class="mod-title">CPU Scheduler Agent</div><div class="mod-sub">PPO · 50K timesteps · 7 obs · 4 actions</div></div><div class="mod-badge">PERFORMANCE</div></div>
+      <div class="mod-body">
+        <div class="metric-row"><div class="metric"><div class="metric-label">Switches/sec</div><div class="metric-val" style="color:var(--blue);">248K</div></div><div class="metric"><div class="metric-label">Avg wait</div><div class="metric-val" style="color:var(--blue);">0.4<span class="metric-unit">ms</span></div></div></div>
+        <div class="obs-vector"><div class="obs-title">Observation Vector (real-time)</div>
+          <div class="obs-row"><span class="obs-key">cpu_bound_ratio</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:72%;background:var(--blue);"></div></div><span class="obs-val" style="color:var(--blue);">0.72</span></div>
+          <div class="obs-row"><span class="obs-key">interactive_ratio</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:28%;background:var(--blue);"></div></div><span class="obs-val" style="color:var(--blue);">0.28</span></div>
+          <div class="obs-row"><span class="obs-key">preempt_ratio</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:49%;background:var(--blue);"></div></div><span class="obs-val" style="color:var(--blue);">0.49</span></div>
+          <div class="obs-row"><span class="obs-key">queue_length_norm</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:36%;background:var(--blue);"></div></div><span class="obs-val" style="color:var(--blue);">0.36</span></div>
+          <div class="obs-row"><span class="obs-key">load_norm</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:68%;background:var(--blue);"></div></div><span class="obs-val" style="color:var(--blue);">0.68</span></div>
+        </div>
+        <div class="prog-section">
+          <div class="prog-label-row"><span class="prog-name">AI vs FCFS</span><span class="prog-pct" style="color:var(--blue);">+34%</span></div><div class="prog-bg"><div class="prog-fill" style="width:84%;background:var(--blue);"></div></div>
+          <div class="prog-label-row"><span class="prog-name">AI vs Round Robin</span><span class="prog-pct" style="color:var(--blue);">+28%</span></div><div class="prog-bg"><div class="prog-fill" style="width:78%;background:var(--blue);"></div></div>
+          <div class="prog-label-row"><span class="prog-name">AI vs Priority</span><span class="prog-pct" style="color:var(--blue);">+19%</span></div><div class="prog-bg"><div class="prog-fill" style="width:69%;background:var(--blue);"></div></div>
+        </div>
+      </div>
+      <div class="mod-footer"><span class="footer-algo">PPO · γ=0.95 · lr=3e-4</span><span class="footer-enforce">cpufreq → PERFORMANCE</span></div>
+    </div>
+    <div class="mod mem">
+      <div class="mod-header"><div><div class="mod-id">Module 02 · Deep Learning</div><div class="mod-title">Memory Manager</div><div class="mod-sub">PyTorch LSTM · 30 epochs · top-k accuracy</div></div><div class="mod-badge">PREDICTING</div></div>
+      <div class="mod-body">
+        <div class="metric-row"><div class="metric"><div class="metric-label">Page faults ↓</div><div class="metric-val" style="color:var(--green);">42<span class="metric-unit">%</span></div></div><div class="metric"><div class="metric-label">Top-5 accuracy</div><div class="metric-val" style="color:var(--green);">87<span class="metric-unit">%</span></div></div></div>
+        <div class="obs-vector"><div class="obs-title">Access Pattern Analysis</div>
+          <div class="obs-row"><span class="obs-key">Zipf (skewed)</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:82%;background:var(--green);"></div></div><span class="obs-val" style="color:var(--green);">82%</span></div>
+          <div class="obs-row"><span class="obs-key">Hot-cold (80/20)</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:78%;background:var(--green);"></div></div><span class="obs-val" style="color:var(--green);">78%</span></div>
+          <div class="obs-row"><span class="obs-key">Sequential</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:91%;background:var(--green);"></div></div><span class="obs-val" style="color:var(--green);">91%</span></div>
+          <div class="obs-row"><span class="obs-key">LSTM confidence</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:87%;background:var(--green);"></div></div><span class="obs-val" style="color:var(--green);">0.87</span></div>
+        </div>
+        <div class="action-log"><div class="log-title">Prediction Log</div>
+          <div class="log-entry"><span class="log-ts">12:04:31</span><span class="log-msg log-good">→ Prefetched pages [4210-4218]</span></div>
+          <div class="log-entry"><span class="log-ts">12:04:29</span><span class="log-msg">Zipf pattern detected · window=20</span></div>
+          <div class="log-entry"><span class="log-ts">12:04:27</span><span class="log-msg log-good">→ Major fault prevented · PID 3421</span></div>
+        </div>
+      </div>
+      <div class="mod-footer"><span class="footer-algo">LSTM · seq=30 · hidden=128</span><span class="footer-enforce">madvise → PREFETCH</span></div>
+    </div>
+    <div class="mod deadlock">
+      <div class="mod-header"><div><div class="mod-id">Module 03 · Classification</div><div class="mod-title">Deadlock Predictor</div><div class="mod-sub">Random Forest + SVM · 8,000 states</div></div><div class="mod-badge">SAFE</div></div>
+      <div class="mod-body">
+        <div class="metric-row"><div class="metric"><div class="metric-label">ROC-AUC</div><div class="metric-val" style="color:var(--amber);">0.96</div></div><div class="metric"><div class="metric-label">vs Banker's</div><div class="metric-val" style="color:var(--amber);">12×<span class="metric-unit">faster</span></div></div></div>
+        <div class="ring-wrap">
+          <svg width="90" height="90" viewBox="0 0 90 90">
+            <circle cx="45" cy="45" r="35" fill="none" stroke="#1e2d3d" stroke-width="10"/>
+            <circle cx="45" cy="45" r="35" fill="none" stroke="var(--green)" stroke-width="10" stroke-dasharray="188" stroke-dashoffset="28" stroke-linecap="round" transform="rotate(-90 45 45)"/>
+            <circle cx="45" cy="45" r="35" fill="none" stroke="var(--amber)" stroke-width="10" stroke-dasharray="188" stroke-dashoffset="169" stroke-linecap="round" transform="rotate(71 45 45)"/>
+            <circle cx="45" cy="45" r="35" fill="none" stroke="var(--red)" stroke-width="10" stroke-dasharray="188" stroke-dashoffset="180" stroke-linecap="round" transform="rotate(108 45 45)"/>
+            <text x="45" y="48" text-anchor="middle" font-family="JetBrains Mono" font-size="11" font-weight="700" fill="#e2e8f0">8000</text>
+            <text x="45" y="58" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#475569">STATES</text>
+          </svg>
+          <div class="ring-legend">
+            <div class="ring-item"><div class="ring-dot" style="background:var(--green);"></div>Safe (85%)</div>
+            <div class="ring-item"><div class="ring-dot" style="background:var(--amber);"></div>Unsafe (10%)</div>
+            <div class="ring-item"><div class="ring-dot" style="background:var(--red);"></div>Deadlock (5%)</div>
+          </div>
+        </div>
+        <div class="prog-section">
+          <div class="prog-label-row"><span class="prog-name">RF Accuracy</span><span class="prog-pct" style="color:var(--amber);">96.4%</span></div><div class="prog-bg"><div class="prog-fill" style="width:96%;background:var(--amber);"></div></div>
+          <div class="prog-label-row"><span class="prog-name">SVM Accuracy</span><span class="prog-pct" style="color:var(--amber);">94.1%</span></div><div class="prog-bg"><div class="prog-fill" style="width:94%;background:var(--amber);"></div></div>
+          <div class="prog-label-row"><span class="prog-name">Precision</span><span class="prog-pct" style="color:var(--amber);">97.2%</span></div><div class="prog-bg"><div class="prog-fill" style="width:97%;background:var(--amber);"></div></div>
+        </div>
+      </div>
+      <div class="mod-footer"><span class="footer-algo">RF+SVM · n_trees=100</span><span class="footer-enforce">Block unsafe requests</span></div>
+    </div>
+    <div class="mod disk">
+      <div class="mod-header"><div><div class="mod-id">Module 04 · Clustering</div><div class="mod-title">Disk Optimizer</div><div class="mod-sub">K-Means · elevator ordering · placement recs</div></div><div class="mod-badge">OPTIMIZED</div></div>
+      <div class="mod-body">
+        <div class="metric-row"><div class="metric"><div class="metric-label">Seek time ↓</div><div class="metric-val" style="color:var(--cyan);">31<span class="metric-unit">%</span></div></div><div class="metric"><div class="metric-label">Silhouette</div><div class="metric-val" style="color:var(--cyan);">0.74</div></div></div>
+        <div class="obs-vector"><div class="obs-title">Cluster Distribution</div>
+          <div class="obs-row"><span class="obs-key">HOT zone (realtime)</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:23%;background:var(--red);"></div></div><span class="obs-val" style="color:var(--red);">23%</span></div>
+          <div class="obs-row"><span class="obs-key">WARM zone (normal)</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:48%;background:var(--cyan);"></div></div><span class="obs-val" style="color:var(--cyan);">48%</span></div>
+          <div class="obs-row"><span class="obs-key">COLD zone (idle)</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:29%;background:var(--text3);"></div></div><span class="obs-val" style="color:var(--text3);">29%</span></div>
+          <div class="obs-row"><span class="obs-key">Elevator efficiency</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:82%;background:var(--cyan);"></div></div><span class="obs-val" style="color:var(--cyan);">82%</span></div>
+        </div>
+        <div class="action-log"><div class="log-title">I/O Queue Actions</div>
+          <div class="log-entry"><span class="log-ts">12:04:31</span><span class="log-msg log-good">→ ionice -c 1 PID:4521 (HOT cluster)</span></div>
+          <div class="log-entry"><span class="log-ts">12:04:29</span><span class="log-msg">Reordered 14 requests via elevator</span></div>
+          <div class="log-entry"><span class="log-ts">12:04:27</span><span class="log-msg">ionice -c 3 PID:2211 (COLD cluster)</span></div>
+        </div>
+      </div>
+      <div class="mod-footer"><span class="footer-algo">K-Means · k=3 · elevator</span><span class="footer-enforce">ionice → class 1/3</span></div>
+    </div>
+    <div class="mod security">
+      <div class="mod-header"><div><div class="mod-id">Module 05 · Anomaly Detection</div><div class="mod-title">Security Monitor</div><div class="mod-sub">Isolation Forest · zero-day · cgroups isolation</div></div><div class="mod-badge">32 ISOLATED</div></div>
+      <div class="mod-body">
+        <div class="metric-row"><div class="metric"><div class="metric-label">Isolated procs</div><div class="metric-val" style="color:var(--red);" id="iso-count">32</div></div><div class="metric"><div class="metric-label">False positive</div><div class="metric-val" style="color:var(--red);">&lt;3<span class="metric-unit">%</span></div></div></div>
+        <div class="anm-table">
+          <div class="anm-row header"><span>Process</span><span>CPU%</span><span>Score</span><span>Status</span></div>
+          <div class="anm-row"><span class="anm-name">python3</span><span class="anm-cpu">2.1%</span><span class="anm-score" style="color:var(--green);">0.82</span><span class="anm-status"><span class="normal-tag">NORMAL</span></span></div>
+          <div class="anm-row"><span class="anm-name">stress-ng</span><span class="anm-cpu">98.4%</span><span class="anm-score" style="color:var(--red);">-0.41</span><span class="anm-status"><span class="threat-tag">THREAT</span></span></div>
+          <div class="anm-row"><span class="anm-name">unknown_proc</span><span class="anm-cpu">45.2%</span><span class="anm-score" style="color:var(--amber);">0.12</span><span class="anm-status"><span class="isolated-tag">ISOLATED</span></span></div>
+          <div class="anm-row"><span class="anm-name">bpftrace</span><span class="anm-cpu">1.8%</span><span class="anm-score" style="color:var(--green);">0.91</span><span class="anm-status"><span class="normal-tag">NORMAL</span></span></div>
+          <div class="anm-row"><span class="anm-name">crypto_miner</span><span class="anm-cpu">99.1%</span><span class="anm-score" style="color:var(--red);">-0.62</span><span class="anm-status"><span class="threat-tag">THREAT</span></span></div>
+        </div>
+        <div class="prog-section">
+          <div class="prog-label-row"><span class="prog-name">Anomaly score threshold</span><span class="prog-pct" style="color:var(--red);">&lt; 0.20</span></div><div class="prog-bg"><div class="prog-fill" style="width:20%;background:var(--red);"></div></div>
+          <div class="prog-label-row"><span class="prog-name">cgroup cpu.weight isolated</span><span class="prog-pct" style="color:var(--red);">10/1024</span></div><div class="prog-bg"><div class="prog-fill" style="width:1%;background:var(--red);"></div></div>
+        </div>
+      </div>
+      <div class="mod-footer"><span class="footer-algo">IsoForest · contamination=0.1</span><span class="footer-enforce">cgroups → cpu.weight=10</span></div>
+    </div>
+    <div class="mod energy">
+      <div class="mod-header"><div><div class="mod-id">Module 06 · Multi-Objective RL</div><div class="mod-title">Energy Optimizer</div><div class="mod-sub">Pareto-optimal · DVFS · cpufreq control</div></div><div class="mod-badge">BALANCED</div></div>
+      <div class="mod-body">
+        <div class="metric-row"><div class="metric"><div class="metric-label">Power saved</div><div class="metric-val" style="color:var(--purple);">18<span class="metric-unit">%</span></div></div><div class="metric"><div class="metric-label">Perf retained</div><div class="metric-val" style="color:var(--purple);">94<span class="metric-unit">%</span></div></div></div>
+        <div class="gauge-row">
+          <div class="gauge"><div class="gauge-label">Performance</div><svg class="gauge-arc" width="60" height="34" viewBox="0 0 60 34"><path d="M5 30 A25 25 0 0 1 55 30" fill="none" stroke="#1e2d3d" stroke-width="7" stroke-linecap="round"/><path d="M5 30 A25 25 0 0 1 55 30" fill="none" stroke="var(--purple)" stroke-width="7" stroke-linecap="round" stroke-dasharray="78.5" stroke-dashoffset="7" opacity="0.9"/></svg><div class="gauge-val" style="color:var(--purple);">94<span class="gauge-unit">%</span></div></div>
+          <div class="gauge"><div class="gauge-label">Power</div><svg class="gauge-arc" width="60" height="34" viewBox="0 0 60 34"><path d="M5 30 A25 25 0 0 1 55 30" fill="none" stroke="#1e2d3d" stroke-width="7" stroke-linecap="round"/><path d="M5 30 A25 25 0 0 1 55 30" fill="none" stroke="var(--green)" stroke-width="7" stroke-linecap="round" stroke-dasharray="78.5" stroke-dashoffset="15"/></svg><div class="gauge-val" style="color:var(--green);">82<span class="gauge-unit">%</span></div></div>
+          <div class="gauge"><div class="gauge-label">Thermal</div><svg class="gauge-arc" width="60" height="34" viewBox="0 0 60 34"><path d="M5 30 A25 25 0 0 1 55 30" fill="none" stroke="#1e2d3d" stroke-width="7" stroke-linecap="round"/><path d="M5 30 A25 25 0 0 1 55 30" fill="none" stroke="var(--amber)" stroke-width="7" stroke-linecap="round" stroke-dasharray="78.5" stroke-dashoffset="32"/></svg><div class="gauge-val" style="color:var(--amber);">59<span class="gauge-unit">°C</span></div></div>
+        </div>
+        <div class="obs-vector"><div class="obs-title">Governor Decision History</div>
+          <div class="obs-row"><span class="obs-key">powersave</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:22%;background:var(--green);"></div></div><span class="obs-val" style="color:var(--green);">22%</span></div>
+          <div class="obs-row"><span class="obs-key">conservative</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:18%;background:var(--cyan);"></div></div><span class="obs-val" style="color:var(--cyan);">18%</span></div>
+          <div class="obs-row"><span class="obs-key">ondemand</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:31%;background:var(--purple);"></div></div><span class="obs-val" style="color:var(--purple);">31%</span></div>
+          <div class="obs-row"><span class="obs-key">performance</span><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:29%;background:var(--red);"></div></div><span class="obs-val" style="color:var(--red);">29%</span></div>
+        </div>
+        <div class="action-log"><div class="log-title">Energy Enforcement Log</div>
+          <div class="log-entry"><span class="log-ts">12:04:31</span><span class="log-msg log-good">→ cpufreq → ondemand (load=0.62)</span></div>
+          <div class="log-entry"><span class="log-ts">12:04:29</span><span class="log-msg">Pareto front updated · 3 objectives</span></div>
+          <div class="log-entry"><span class="log-ts">12:04:27</span><span class="log-msg log-warn">Thermal headroom: 21°C · caution</span></div>
+        </div>
+      </div>
+      <div class="mod-footer"><span class="footer-algo">Multi-obj RL · Pareto front</span><span class="footer-enforce">cpufreq → DVFS active</span></div>
+    </div>
+  </div>
+</div>
+<script>
+function tick(){const now=new Date();document.getElementById('clock').textContent=now.toTimeString().slice(0,8);}
+tick();setInterval(tick,1000);
+function randomInRange(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function animateMetrics(){
+  document.getElementById('ov-cpu').textContent=randomInRange(55,85)+'%';
+  document.getElementById('ov-mem').textContent=randomInRange(55,70)+'%';
+  const iso=randomInRange(28,35);
+  document.getElementById('ov-sec').textContent=iso;
+  document.getElementById('iso-count').textContent=iso;
+  document.querySelectorAll('.prog-fill').forEach(bar=>{const b=parseInt(bar.style.width);bar.style.width=Math.min(100,Math.max(1,b+randomInRange(-3,3)))+'%';});
+  document.querySelectorAll('.obs-bar-fill').forEach(bar=>{
+    const b=parseInt(bar.style.width);
+    const nw=Math.min(98,Math.max(2,b+randomInRange(-5,5)));
+    bar.style.width=nw+'%';
+    const sib=bar.closest('.obs-row').querySelector('.obs-val');
+    if(sib){sib.textContent=sib.textContent.includes('%')?nw+'%':(nw/100).toFixed(2);}
+  });
+}
+setInterval(animateMetrics,2000);
+const memLogs=['→ Prefetched pages [4210-4218]','Zipf pattern detected · window=20','→ Major fault prevented · PID 3421','LSTM prediction: next 5 pages ready','Hot-cold pattern detected','Prefetch accuracy: 89%'];
+const diskLogs=['→ ionice -c 1 PID:4521 (HOT)','Reordered 14 requests via elevator','ionice -c 3 PID:2211 (COLD)','K-Means reclustered: 3 zones','→ Seek optimized: -8ms saved','HOT zone: 23% of blocks'];
+const energyLogs=['→ cpufreq → ondemand (load=0.62)','Pareto front updated · 3 objectives','Thermal headroom: 21°C · caution','→ cpufreq → powersave (idle)','Energy saved this cycle: 0.3W','DVFS: 2.4GHz → 1.8GHz'];
+function rotateLogs(){
+  const logs=document.querySelectorAll('.action-log');
+  const allSets=[memLogs,diskLogs,energyLogs];
+  logs.forEach((log,i)=>{
+    const entries=log.querySelectorAll('.log-entry');
+    const set=allSets[i]||memLogs;
+    const newMsg=set[randomInRange(0,set.length-1)];
+    const ts=new Date().toTimeString().slice(0,8);
+    for(let j=entries.length-1;j>0;j--){
+      entries[j].querySelector('.log-ts').textContent=entries[j-1].querySelector('.log-ts').textContent;
+      const oldMsg=entries[j-1].querySelector('.log-msg');
+      const newMsgEl=entries[j].querySelector('.log-msg');
+      newMsgEl.textContent=oldMsg.textContent;
+      newMsgEl.className=oldMsg.className;
+    }
+    entries[0].querySelector('.log-ts').textContent=ts;
+    const first=entries[0].querySelector('.log-msg');
+    first.textContent=newMsg;
+    first.className='log-msg'+(newMsg.includes('→')||newMsg.includes('saved')||newMsg.includes('prevented')?' log-good':newMsg.includes('caution')||newMsg.includes('rising')?' log-warn':'');
+  });
+}
+setInterval(rotateLogs,3000);
+</script>
+</body>
+</html>

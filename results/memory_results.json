@@ -1,9 +1,9 @@
 {
-  "top1_accuracy": 27.07,
-  "top3_accuracy": 49.49,
-  "top5_accuracy": 58.28,
+  "top1_accuracy": 27.98,
+  "top3_accuracy": 48.79,
+  "top5_accuracy": 57.98,
   "fifo_faults": 219,
   "lru_faults": 176,
-  "ai_faults": 168,
-  "reduction_vs_lru_pct": 4.55
+  "ai_faults": 175,
+  "reduction_vs_lru_pct": 0.57
 }
